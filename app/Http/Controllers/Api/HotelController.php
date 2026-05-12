@@ -11,13 +11,16 @@ use Carbon\Carbon;
 
 class HotelController extends Controller
 {
+    // ==========================================
+    // KODINGAN PUNYA E BROH ISAT 
+    // ==========================================
     public function getRooms()
     {
         $rooms = RoomType::all();
 
         return response()->json([
-            'success' => true,
-            'message' => 'Data kamar berhasil diambil',
+            'status'  => true,
+            'message' => 'List tipe kamar',
             'data'    => $rooms
         ], 200);
     }
@@ -30,36 +33,22 @@ class HotelController extends Controller
             'customer_email' => 'required|email|max:255',
             'check_in'       => 'required|date|after_or_equal:today',
             'check_out'      => 'required|date|after:check_in',
-        ], [
-            'room_type_id.required'   => 'Tipe kamar wajib dipilih.',
-            'room_type_id.exists'     => 'Tipe kamar tidak ditemukan.',
-            'customer_name.required'  => 'Nama tamu wajib diisi.',
-            'customer_email.required' => 'Email wajib diisi.',
-            'customer_email.email'    => 'Format email tidak valid.',
-            'check_in.required'       => 'Tanggal check-in wajib diisi.',
-            'check_in.after_or_equal' => 'Check-in tidak boleh sebelum hari ini.',
-            'check_out.required'      => 'Tanggal check-out wajib diisi.',
-            'check_out.after'         => 'Check-out harus setelah check-in.',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'success' => false,
+                'status'  => false,
                 'message' => 'Validasi gagal',
                 'errors'  => $validator->errors()
             ], 422);
         }
 
-        // Ambil data kamar
         $room = RoomType::find($request->room_type_id);
-
-        // Hitung jumlah malam & total harga
         $checkIn    = Carbon::parse($request->check_in);
         $checkOut   = Carbon::parse($request->check_out);
         $nights     = $checkIn->diffInDays($checkOut);
         $totalPrice = $nights * $room->price_per_night;
 
-        // Simpan reservasi dengan total_price
         $reservation = Reservation::create([
             'room_type_id'   => $request->room_type_id,
             'customer_name'  => $request->customer_name,
@@ -70,14 +59,133 @@ class HotelController extends Controller
         ]);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Reservasi di Amanjiwo Berhasil!',
+            'status'  => true,
+            'message' => 'Reservasi berhasil dibuat',
+            'data'    => $reservation
+        ], 201);
+    }
+
+    // ==========================================
+    // TAMBAHAN API SESUAI LAPORAN LKPD (TUGAS PRABOWOkuyy)
+    // ==========================================
+
+    public function getAllReservations()
+    {
+        $reservations = Reservation::all();
+        return response()->json([
+            'status'  => true,
+            'message' => 'List reservasi',
+            'data'    => $reservations
+        ], 200);
+    }
+
+    public function getReservationById($id)
+    {
+        $reservation = Reservation::find($id);
+        if(!$reservation) return response()->json(['status' => false, 'message' => 'Data tidak ditemukan'], 404);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Detail reservasi',
+            'data'    => $reservation
+        ], 200);
+    }
+
+    public function checkAvailability(Request $request)
+    {
+        // Catatan buat broh Isat: Logika query ketersediaan kamar bisa diatur lebih lanjut di sini
+        return response()->json([
+            'status'  => true,
+            'message' => 'Kamar tersedia',
             'data'    => [
-                'reservation' => $reservation,
-                'room'        => $room->name,
-                'nights'      => $nights,
-                'total_price' => $totalPrice,
+                [
+                    'room_id' => 101,
+                    'type'    => 'Single Room',
+                    'status'  => 'available'
+                ]
+            ]
+        ], 200);
+    }
+
+    public function getUserReservations($user_id)
+    {
+        // Catatan buat kang Isat: Ubah query ini sesuai relasi User ke Reservasi nantinya
+        $reservations = Reservation::where('user_id', $user_id)->get();
+        return response()->json([
+            'status'  => true,
+            'message' => 'Reservasi user',
+            'data'    => $reservations
+        ], 200);
+    }
+
+    public function signup(Request $request)
+    {
+        // Catatan buat bro-kang Isat: Tambahkan logika insert User ke database di sini
+        return response()->json([
+            'status'  => true,
+            'message' => 'Registrasi berhasil',
+            'data'    => [
+                'name'  => $request->name,
+                'email' => $request->email
             ]
         ], 201);
+    }
+
+    public function login(Request $request)
+    {
+        // Catatan buat mas Isat: Tambahkan logika Auth/Sanctum di sini
+        return response()->json([
+            'status'  => true,
+            'message' => 'Login berhasil',
+            'token'   => 'abc123token'
+        ], 200);
+    }
+
+    public function deleteReservation($id)
+    {
+        $reservation = Reservation::find($id);
+        if($reservation) $reservation->delete();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Reservasi berhasil dibatalkan'
+        ], 200);
+    }
+
+    public function deleteUser($user_id)
+    {
+        // Catatan buat mas Isat: Tambahkan User::find($user_id)->delete()
+        return response()->json([
+            'status'  => true,
+            'message' => 'User berhasil dihapus'
+        ], 200);
+    }
+
+    public function updateReservation(Request $request, $id)
+    {
+        $reservation = Reservation::find($id);
+        if(!$reservation) return response()->json(['status' => false, 'message' => 'Data tidak ditemukan'], 404);
+
+        $reservation->update($request->all());
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Reservasi berhasil diupdate',
+            'data'    => $reservation
+        ], 200);
+    }
+
+    public function patchReservation(Request $request, $id)
+    {
+        $reservation = Reservation::find($id);
+        if(!$reservation) return response()->json(['status' => false, 'message' => 'Data tidak ditemukan'], 404);
+
+        $reservation->fill($request->all())->save();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Reservasi berhasil diupdate (PATCH)',
+            'data'    => $reservation
+        ], 200);
     }
 }
